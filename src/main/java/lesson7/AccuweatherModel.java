@@ -2,12 +2,16 @@ package lesson7;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import lesson7.entity.Weather;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
 import java.io.IOException;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class AccuweatherModel implements WeatherModel {
@@ -31,12 +35,15 @@ public class AccuweatherModel implements WeatherModel {
 
     private static final OkHttpClient okHttpClient = new OkHttpClient();
     private static final ObjectMapper objectMapper = new ObjectMapper();
+    private DataBaseRepository dataBaseRepository = new DataBaseRepository();
 
 
-    public void getWeather(String selectedCity, Period period) throws IOException {
+
+//В базу пишет и из базы достает прогноз на 1 день
+    public Weather getWeather(String selectedCity, Period period) throws IOException, SQLException {
         switch (period) {
             case NOW:
-                HttpUrl httpUrl = new HttpUrl.Builder()
+              HttpUrl httpUrl = new HttpUrl.Builder()
                         .scheme(PROTOKOL)
                         .host(BASE_HOST)
                         .addPathSegment(FORECASTS)
@@ -55,36 +62,15 @@ public class AccuweatherModel implements WeatherModel {
 
                 Response oneDayForecastResponse = okHttpClient.newCall(request).execute();
                 String weatherResponse = oneDayForecastResponse.body().string();
-                System.out.println(weatherResponse);
-
-                String []tempWeather = weatherResponse.split("\"");
-                String readWeather = new String("В городе " + selectedCity);
-
-                for(int i = 0; i <tempWeather.length; i++){
-                if(tempWeather[i].contains("Text")){
-                    readWeather = readWeather + " " + tempWeather[i+2].replace(":", " ") + ", ";
-                    };
-                if(tempWeather[i].contains("Minimum")){
-                        readWeather = readWeather + " температура от" + tempWeather[i+3].replace(":", " ");
-                    };
-                if(tempWeather[i].contains("Maximum")){
-                        readWeather = readWeather + " до" + tempWeather[i+3].replace(":", " ") + " градусов. \n";
-                    };
-                };
-                System.out.println(readWeather);
-
-/*   Человекочитаемый вывод погоды я сделала,хотела экономнее сделать,но
-       этот код у меня не работает,он выдает мне NullPointerException,т.е. ничего не получает на вход,не понимаю, почему:
-                String  readable = objectMapper.readTree(weatherResponse).get(0).at("/Text").asText() + ". Температура воздуха от  " +
-                        objectMapper.readTree(weatherResponse).get(0).at("/Minimum").asText() + " до " +
-                        objectMapper.readTree(weatherResponse).get(0).at("/Maximum").asText() + " градусов.";
-                System.out.println(readable);
-*/
-
+                String  date = objectMapper.readTree(weatherResponse).at("/DailyForecasts").get(0).at("/Date").asText();
+                Integer temperature = objectMapper.readTree(weatherResponse).at("/DailyForecasts").get(0).at("/Temperature").at("/Minimum").at("/Value").asInt();
+                Weather oneDay = new Weather (selectedCity, date, temperature);
+                System.out.println(oneDay);
+                saveWeather(oneDay);
                 break;
+
             case FIVE_DAYS:
-                //TODO*: реализовать вывод погоды на 5 дней
-                //Реализовано
+                //TODO*: реализовать вывод погоды на 5 дней. Оптимизирован вывод, совладала с маппингом. Пишет в базу.
                 HttpUrl httpUrl5 = new HttpUrl.Builder()
                         .scheme(PROTOKOL)
                         .host(BASE_HOST)
@@ -104,29 +90,40 @@ public class AccuweatherModel implements WeatherModel {
 
                 Response fiveDayForecastResponse = okHttpClient.newCall(request5).execute();
                 String weatherResponseFor5 = fiveDayForecastResponse.body().string();
-                System.out.println(weatherResponseFor5);
-                String []tempWeather5 = weatherResponseFor5.split("\"");
-                String readWeather5 = ("В городе " + selectedCity);
-
-                for(int i = 0; i <tempWeather5.length; i++){
-                    if(tempWeather5[i].contains("Text")){
-                        readWeather5 = readWeather5 + " " + tempWeather5[i+2].replace(":", " ") + "\n";
-                    };
-                    if(tempWeather5[i].contains("Date")){
-                        readWeather5 = readWeather5 + " " + tempWeather5[i+2].replace(":", " ");
-                    };
-                    if(tempWeather5[i].contains("Minimum")){
-                        readWeather5 = readWeather5 + " температура от" + tempWeather5[i+3].replace(":", " ");
-                    };
-                    if(tempWeather5[i].contains("Maximum")){
-                        readWeather5 = readWeather5 + " до" + tempWeather5[i+3].replace(":", " ") + " градусов. \n";
-                    };
+                List<Weather> weathers = new ArrayList<>();
+                for(int i = 0; i <5; i++){
+                    String  eachDate = objectMapper.readTree(weatherResponseFor5).at("/DailyForecasts").get(i).at("/Date").asText();
+                    Integer eachTemperature = objectMapper.readTree(weatherResponseFor5).at("/DailyForecasts").get(i).at("/Temperature").at("/Minimum").at("/Value").asInt();
+                    System.out.println("В городе " + selectedCity + " на дату " + eachDate + " ожидается минимальная температура " + eachTemperature + " градусов Цельсия");
+                    Weather weatherToList = new Weather(selectedCity, eachDate, eachTemperature);
+                    weathers.add(weatherToList);
                 };
-                System.out.println(readWeather5);
-
+                saveWeatherList(weathers);
                 break;
         }
+        return null;
     }
+
+    @Override
+    public boolean saveWeather(Weather weather) throws SQLException {
+        return dataBaseRepository.saveWeatherToDataBase(weather);
+    }
+
+    @Override
+    public Weather getSavedToDB(String inputCity) {
+        return dataBaseRepository.getSavedToDB(inputCity);
+    }
+
+
+    public void saveWeatherList(List<Weather> weatherList) throws SQLException {
+        dataBaseRepository.saveWeatherToDataBaseList(weatherList);
+    }
+
+    @Override
+    public List<Weather> getSavedToDBWeatherList(String inputCity) {
+        return dataBaseRepository.getSavedToDBWeatherList(inputCity);
+    }
+
 
 
     private String detectCityKey(String selectCity) throws IOException {
@@ -150,7 +147,6 @@ public class AccuweatherModel implements WeatherModel {
 
         Response response = okHttpClient.newCall(request).execute();
         String responseString = response.body().string();
-
         String cityKey = objectMapper.readTree(responseString).get(0).at("/Key").asText();
         return cityKey;
     }
