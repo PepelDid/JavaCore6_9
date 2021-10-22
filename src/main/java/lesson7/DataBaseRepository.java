@@ -11,6 +11,7 @@ public class DataBaseRepository {
     private String insertWeather5Query = "insert into weather5 (city, local_date, temperature) values (?, ?, ?)";
     private String getWeatherQuery = "select * from weather where city =";
     private String getWeather5Query = "select * from weather5 where city =";
+    private String deleteOldQuery = "delete from weather where city =";
     private static final String DB_PATH = "jdbc:sqlite:accuwthr.db";
 
     static {
@@ -21,8 +22,11 @@ public class DataBaseRepository {
         }
     }
 
-    public boolean saveWeatherToDataBase(Weather weather) throws SQLException {
+    public boolean saveWeatherToDataBase(Weather weather, String city) throws SQLException {
+
         try (Connection connection = DriverManager.getConnection(DB_PATH)) {
+            PreparedStatement deleteWeather = connection.prepareStatement(deleteOldQuery + "'" + city + "'");
+            deleteWeather.execute();
             PreparedStatement insertWeather = connection.prepareStatement(insertWeatherQuery);
             insertWeather.setString(1, weather.getCity());
             insertWeather.setString(2, weather.getLocalDate());

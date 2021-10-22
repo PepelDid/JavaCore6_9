@@ -14,8 +14,7 @@ public class UserInterfaceView {
             while (true) {
                 System.out.println("Введите название города латиницей:");
                 city = scanner.nextLine();
-                if (!city.matches("[a-zA-Z]")) break;
-                //тут у меня проблемы с регулярным выражением, я пишу "[a-zA-Z]", но это не работает как фильтр
+                if (city.matches("^[a-zA-Z]+$")) break;
             }
             ;
             String command;
@@ -24,7 +23,7 @@ public class UserInterfaceView {
                         "5 для прогноза на 5 дней; 2 для получения погоды из базы данных на один день;" +
                         "4 для получения погоды из базы данных на пять дней; для выхода введите 0:");
                 command = scanner.nextLine();
-                if (command.equals("1") || command.equals("5") || command.equals("2") || command.equals("4")) break;
+                if (command.matches("^[1245]{1}$")) break;
             }
             ;
             if (command.equals("0")) break;

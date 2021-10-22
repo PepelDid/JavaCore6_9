@@ -8,9 +8,8 @@ import java.util.List;
 
 public interface WeatherModel {
     Weather getWeather(String selectedCity, Period period) throws IOException, SQLException;
-    boolean saveWeather(Weather weather) throws SQLException;
+    boolean saveWeather(Weather weather, String selectedCity) throws SQLException;
     Weather getSavedToDB(String city);
     List<Weather> getSavedToDBWeatherList(String selectedCity);
-
 
 }

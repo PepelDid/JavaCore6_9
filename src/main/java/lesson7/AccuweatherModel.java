@@ -39,11 +39,11 @@ public class AccuweatherModel implements WeatherModel {
 
 
 
-//В базу пишет и из базы достает прогноз на 1 день
+    //В базу пишет и из базы достает прогноз на 1 день
     public Weather getWeather(String selectedCity, Period period) throws IOException, SQLException {
         switch (period) {
             case NOW:
-              HttpUrl httpUrl = new HttpUrl.Builder()
+                HttpUrl httpUrl = new HttpUrl.Builder()
                         .scheme(PROTOKOL)
                         .host(BASE_HOST)
                         .addPathSegment(FORECASTS)
@@ -66,7 +66,7 @@ public class AccuweatherModel implements WeatherModel {
                 Integer temperature = objectMapper.readTree(weatherResponse).at("/DailyForecasts").get(0).at("/Temperature").at("/Minimum").at("/Value").asInt();
                 Weather oneDay = new Weather (selectedCity, date, temperature);
                 System.out.println(oneDay);
-                saveWeather(oneDay);
+                saveWeather(oneDay,selectedCity);
                 break;
 
             case FIVE_DAYS:
@@ -105,8 +105,8 @@ public class AccuweatherModel implements WeatherModel {
     }
 
     @Override
-    public boolean saveWeather(Weather weather) throws SQLException {
-        return dataBaseRepository.saveWeatherToDataBase(weather);
+    public boolean saveWeather(Weather weather, String inputcity) throws SQLException {
+        return dataBaseRepository.saveWeatherToDataBase(weather, inputcity);
     }
 
     @Override
